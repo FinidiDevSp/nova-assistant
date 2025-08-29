@@ -19,3 +19,4 @@ person_name: "Gorka"
 # Plugins habilitados (coinciden con nombres de archivo en plugins/ sin .py)
 plugins:
     - "saludo"
+    - "volumen"
