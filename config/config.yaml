@@ -4,6 +4,7 @@ mode: "keyword_once"
 # Palabras clave (se comparan en minúsculas)
 activation_word: "activar"
 stop_word: "parar"
+mic_off_word: "silencio"
 
 # Silencio razonable (solo aplica a mode=keyword_once)
 silence_timeout_sec: 0.8 # tiempo continuo por debajo del umbral para cortar
@@ -34,3 +35,8 @@ plugins:
     - "volumen"
     - "sistema"
     - "pantalla"
+    - "modos"
+
+hotkeys:
+  mic_off: "ctrl+shift+m"
+  mic_on: "ctrl+shift+n"

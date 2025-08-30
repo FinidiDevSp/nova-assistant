@@ -16,6 +16,9 @@ from vosk import Model, KaldiRecognizer
 import pyttsx3
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import keyboard
+
+from memory import MemoryStore
 
 # -------------------- Utilidades --------------------
 
@@ -111,6 +114,8 @@ class Speaker:
 class PluginCtx:
     config: Dict[str, Any]
     speak: Callable[[str], None]
+    memory: MemoryStore
+    config_dir: pathlib.Path
 
 
 def load_plugins(plugin_names: List[str]) -> List[Any]:
@@ -137,6 +142,7 @@ def run_plugins(plugins: List[Any], text: str, ctx: PluginCtx):
                 p.run(text, ctx)
         except Exception as e:
             print(f"[Plugins] Error en {getattr(p,'name','<plugin>')}: {e}")
+    ctx.memory.add_history(text)
 
 
 # -------------------- Reconocimiento --------------------
@@ -173,6 +179,8 @@ class VoskListener:
         self.q = queue.Queue()
         self.activation = cfg.get('activation_word', 'activar').lower()
         self.stop_word  = cfg.get('stop_word', 'parar').lower()
+        self.mic_off_word = cfg.get('mic_off_word', 'silencio').lower()
+        self.micro_enabled = True
         self.mode = cfg.get('mode', 'keyword_once')
         self.silence_timeout = float(cfg.get('silence_timeout_sec', 1.2))
         self.energy_thresh   = float(cfg.get('silence_energy_threshold', 650))
@@ -231,6 +239,18 @@ class VoskListener:
             device=self.device_index
         )
 
+    def disable_micro(self):
+        self.micro_enabled = False
+        self.active = False
+        self.utterance_buffer.clear()
+        self.recognizer.Reset()
+        print("[Micro] Desactivado")
+
+    def enable_micro(self):
+        self.micro_enabled = True
+        self.recognizer.Reset()
+        print("[Micro] Activado")
+
     def _handle_final_result(self, res_json: str) -> str:
         return (json.loads(res_json).get('text') or '').strip()
 
@@ -256,12 +276,14 @@ class VoskListener:
         self.silence_start_ts = None
         return False
 
-    def loop(self, plugins, speaker: Speaker):
+    def loop(self, plugins, speaker: Speaker, memory: MemoryStore, config_dir: pathlib.Path):
         print("Escuchando… (Ctrl+C para salir)")
-        ctx = PluginCtx(config=self.cfg, speak=speaker.say)
+        ctx = PluginCtx(config=self.cfg, speak=speaker.say, memory=memory, config_dir=config_dir)
         with self._open_stream():
             while True:
                 data: bytes = self.q.get()
+                if not self.micro_enabled:
+                    continue
                 energy = rms_energy_int16(data)
                 now_ts = time.time()
 
@@ -305,6 +327,11 @@ class VoskListener:
                 text = self._handle_final_result(self.recognizer.Result()).lower()
                 if text:
                     print(f"[Final] {text}")
+                    if self.mic_off_word in text:
+                        ctx.memory.add_history(text)
+                        self.disable_micro()
+                        speaker.say("Micrófono desactivado")
+                        continue
                 else:
                     # Final vacío: sirve para ayudar al VAD si estamos activos
                     if self.active and self.mode == 'keyword_once':
@@ -355,12 +382,17 @@ class Speaker(Speaker):  # alias para tipado en loop
     pass
 
 def main():
-    cfg_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-    if not os.path.exists(cfg_path):
+    cfg_dir = pathlib.Path(__file__).resolve().parent.parent / 'config'
+    cfg_path = cfg_dir / 'config.yaml'
+    if not cfg_path.exists():
         print(f"No existe config.yaml en {cfg_path}")
         sys.exit(1)
-    with open(cfg_path, 'r', encoding='utf-8') as f:
+    with cfg_path.open('r', encoding='utf-8') as f:
         cfg = yaml.safe_load(f) or {}
+    memory = MemoryStore(cfg_dir / 'memory.yaml')
+    history = memory.get_history()
+    if history:
+        print(f"[Mem] Última frase: {history[-1]}")
 
     # (Opcional) Lista dispositivos
     if cfg.get("list_devices", False):
@@ -373,8 +405,15 @@ def main():
     plugins = load_plugins(cfg.get('plugins', []))
 
     listener = VoskListener(cfg)
+
+    hk = cfg.get('hotkeys', {})
+    if hk.get('mic_off'):
+        keyboard.add_hotkey(hk['mic_off'], listener.disable_micro)
+    if hk.get('mic_on'):
+        keyboard.add_hotkey(hk['mic_on'], listener.enable_micro)
+
     try:
-        listener.loop(plugins, speaker)
+        listener.loop(plugins, speaker, memory, cfg_dir)
     except KeyboardInterrupt:
         print("\nSaliendo…")
 
