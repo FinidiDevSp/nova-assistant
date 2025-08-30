@@ -29,6 +29,9 @@ list_devices: false
 # Persona
 person_name: "Gorka"
 
+# Ciudad para el plugin de clima
+weather_city: "Madrid"
+
 # Plugins habilitados (coinciden con nombres de archivo en plugins/ sin .py)
 plugins:
     - "saludo"
@@ -36,6 +39,7 @@ plugins:
     - "sistema"
     - "pantalla"
     - "modos"
+    - "clima"
 
 hotkeys:
   mic_off: "ctrl+shift+m"
