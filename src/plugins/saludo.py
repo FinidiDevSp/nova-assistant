@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import Dict, Any
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Plugin:
@@ -24,5 +27,5 @@ class Plugin:
         else:
             saludo = "Buenas noches"
         frase = f"{saludo}, {nombre}."
-        print(f"[Plugin:saludo] -> {frase}")
+        logger.info(f"[Plugin:saludo] -> {frase}")
         ctx.speak(frase)
