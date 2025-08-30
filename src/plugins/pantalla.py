@@ -20,6 +20,8 @@ class Plugin:
             return True
         if "apaga" in t and "pantalla" in t:
             return True
+        if "enciende" in t and "pantalla" in t:
+            return True
         return False
 
     def run(self, text: str, ctx):  # ctx: PluginCtx
@@ -39,6 +41,23 @@ class Plugin:
             except Exception as e:
                 print(f"[Plugin:pantalla] Error apagando pantalla: {e}")
                 ctx.speak("No pude apagar la pantalla")
+            return
+
+        if "enciende" in t and "pantalla" in t:
+            sysname = platform.system()
+            try:
+                if sysname == "Windows":
+                    import ctypes
+                    ctypes.windll.user32.SendMessageW(0xFFFF, 0x0112, 0xF170, -1)
+                elif sysname == "Linux":
+                    subprocess.run(["xset", "dpms", "force", "on"], check=False)
+                else:
+                    ctx.speak("No sé encender la pantalla en este sistema")
+                    return
+                ctx.speak("Pantalla encendida")
+            except Exception as e:
+                print(f"[Plugin:pantalla] Error encendiendo pantalla: {e}")
+                ctx.speak("No pude encender la pantalla")
             return
 
         if "brillo" in t:
