@@ -5,6 +5,8 @@ import platform
 import subprocess
 import logging
 
+from utils import word_in_text
+
 try:
     import screen_brightness_control as sbc
 except Exception:  # library not available
@@ -19,17 +21,17 @@ class Plugin:
 
     def match(self, text: str, config: Dict[str, Any]) -> bool:
         t = text.lower()
-        if "brillo" in t:
+        if word_in_text(text, "brillo", config):
             return True
-        if "apaga" in t and "pantalla" in t:
+        if word_in_text(text, "apaga", config) and word_in_text(text, "pantalla", config):
             return True
-        if "enciende" in t and "pantalla" in t:
+        if word_in_text(text, "enciende", config) and word_in_text(text, "pantalla", config):
             return True
         return False
 
     def run(self, text: str, ctx):  # ctx: PluginCtx
         t = text.lower()
-        if "apaga" in t and "pantalla" in t:
+        if word_in_text(text, "apaga", ctx.config) and word_in_text(text, "pantalla", ctx.config):
             sysname = platform.system()
             try:
                 if sysname == "Windows":
@@ -46,7 +48,7 @@ class Plugin:
                 ctx.speak("No pude apagar la pantalla")
             return
 
-        if "enciende" in t and "pantalla" in t:
+        if word_in_text(text, "enciende", ctx.config) and word_in_text(text, "pantalla", ctx.config):
             sysname = platform.system()
             try:
                 if sysname == "Windows":
@@ -63,7 +65,7 @@ class Plugin:
                 ctx.speak("No pude encender la pantalla")
             return
 
-        if "brillo" in t:
+        if word_in_text(text, "brillo", ctx.config):
             if sbc is None:
                 ctx.speak("No puedo controlar el brillo en este sistema")
                 return

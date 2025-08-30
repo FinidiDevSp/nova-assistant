@@ -418,6 +418,13 @@ def main():
         sys.exit(1)
     with cfg_path.open('r', encoding='utf-8') as f:
         cfg = yaml.safe_load(f) or {}
+    # Load optional synonyms configuration for plugin action detection
+    syn_path = cfg_dir / 'synonyms.yaml'
+    if syn_path.exists():
+        with syn_path.open('r', encoding='utf-8') as f:
+            cfg['synonyms'] = yaml.safe_load(f) or {}
+    else:
+        cfg['synonyms'] = {}
     memory = MemoryStore(cfg_dir / 'memory.yaml')
     history = memory.get_history()
     if history:

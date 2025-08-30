@@ -7,6 +7,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
 
+from utils import word_in_text
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -14,7 +16,8 @@ class Plugin:
     name: str = "saludo"
 
     def match(self, text: str, config: Dict[str, Any]) -> bool:
-        return "saludame" in text.lower()
+        # Soporta sinónimos definidos en config/synonyms.yaml
+        return word_in_text(text, "saludame", config)
 
     def run(self, text: str, ctx):  # ctx: PluginCtx (tiene config y speak)
         nombre = ctx.config.get('person_name', 'amigo')
