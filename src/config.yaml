@@ -20,3 +20,5 @@ person_name: "Gorka"
 plugins:
     - "saludo"
     - "volumen"
+    - "sistema"
+    - "pantalla"
