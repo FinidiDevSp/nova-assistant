@@ -1,7 +1,7 @@
 """Plugin para ajustar el volumen del sistema en Windows.
 
-Reacciona a frases como "volumen 50" o "sube el volumen al 20" y
-establece el volumen maestro al porcentaje indicado (0-100).
+Reacciona a frases como "volumen 50", "sube el volumen" o "silencia el volumen"
+y ajusta el volumen maestro según corresponda.
 """
 
 from dataclasses import dataclass
@@ -15,20 +15,20 @@ class Plugin:
     name: str = "volumen"
 
     def match(self, text: str, config: Dict[str, Any]) -> bool:
-        """Comprueba si el texto contiene la palabra "volumen" y un número."""
-        return "volumen" in text.lower() and re.search(r"\d+", text) is not None
+        """Comprueba si el texto contiene la palabra 'volumen' y alguna acción."""
+        t = text.lower()
+        if "volumen" not in t:
+            return False
+        if re.search(r"\d+", t):
+            return True
+        return any(k in t for k in ["sube", "baja", "silencia", "activa"])
 
     def run(self, text: str, ctx):  # ctx: PluginCtx
-        m = re.search(r"(\d+)", text)
-        if not m:
-            ctx.speak("No entendí el nivel de volumen")
-            return
-        level = int(m.group(1))
-        level = max(0, min(100, level))
-
         if platform.system() != "Windows":
             ctx.speak("El control de volumen solo funciona en Windows")
             return
+
+        t = text.lower()
 
         try:
             from ctypes import POINTER, cast
@@ -38,6 +38,37 @@ class Plugin:
             devices = AudioUtilities.GetSpeakers()
             interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+            if "sube" in t:
+                current = volume.GetMasterVolumeLevelScalar()
+                level = min(1.0, current + 0.05)
+                volume.SetMasterVolumeLevelScalar(level, None)
+                ctx.speak("Volumen aumentado")
+                return
+
+            if "baja" in t:
+                current = volume.GetMasterVolumeLevelScalar()
+                level = max(0.0, current - 0.05)
+                volume.SetMasterVolumeLevelScalar(level, None)
+                ctx.speak("Volumen disminuido")
+                return
+
+            if "silencia" in t:
+                volume.SetMute(1, None)
+                ctx.speak("Volumen silenciado")
+                return
+
+            if "activa" in t:
+                volume.SetMute(0, None)
+                ctx.speak("Volumen activado")
+                return
+
+            m = re.search(r"(\d+)", t)
+            if not m:
+                ctx.speak("No entendí el nivel de volumen")
+                return
+            level = int(m.group(1))
+            level = max(0, min(100, level))
             volume.SetMasterVolumeLevelScalar(level / 100.0, None)
             ctx.speak(f"Volumen ajustado al {level} por ciento")
         except Exception as e:
