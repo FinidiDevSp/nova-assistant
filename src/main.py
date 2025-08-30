@@ -50,18 +50,14 @@ def now_greeting_timeday_eu_madrid() -> str:
 
 class Speaker:
     def __init__(self, language_hint: str = "es"):
-        self.engine = pyttsx3.init()
-        # Selección de voz española si existe
-        try:
-            for v in self.engine.getProperty('voices'):
-                name = (v.name or "").lower()
-                lang = "".join(getattr(v, 'languages', []) or []).lower()
-                if language_hint in name or language_hint in lang:
-                    self.engine.setProperty('voice', v.id)
-                    break
-        except Exception:
-            pass
+        """Cola y hilo dedicado para sintetizar voz.
 
+        Se crea el motor de ``pyttsx3`` dentro del propio hilo para evitar
+        problemas de inicialización con backends como ``espeak`` que solo
+        funcionaban en la primera llamada cuando el motor se instanciaba en
+        un hilo diferente.
+        """
+        self.language_hint = language_hint
         self.q = queue.Queue()
         self._on_start = None
         self._on_end = None
@@ -75,6 +71,18 @@ class Speaker:
         self._on_end = on_end
 
     def _loop(self):
+        engine = pyttsx3.init()
+        try:
+            for v in engine.getProperty('voices'):
+                name = (v.name or "").lower()
+                lang = "".join(getattr(v, 'languages', []) or []).lower()
+                if self.language_hint in name or self.language_hint in lang:
+                    engine.setProperty('voice', v.id)
+                    break
+        except Exception:
+            pass
+
+        self.engine = engine
         while True:
             text = self.q.get()
             if text is None:
@@ -82,11 +90,12 @@ class Speaker:
             if self._on_start:
                 self._on_start()
             try:
-                self.engine.say(text)
-                self.engine.runAndWait()
+                engine.say(text)
+                engine.runAndWait()
             finally:
                 if self._on_end:
                     self._on_end()
+        engine.stop()
 
     def say(self, text: str):
         """Encola texto para hablar (no bloquea)."""
@@ -94,6 +103,7 @@ class Speaker:
 
     def stop(self):
         self.q.put(None)
+        self.thread.join(timeout=1.0)
 
 # -------------------- Plugins --------------------
 
