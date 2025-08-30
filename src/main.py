@@ -9,7 +9,6 @@ import pathlib
 from dataclasses import dataclass
 from typing import Callable, List, Dict, Any
 import threading
-import queue
 import yaml
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
@@ -58,7 +57,7 @@ def now_greeting_timeday_eu_madrid() -> str:
 
 # -------------------- TTS (pyttsx3) --------------------
 
-class Speaker:
+class TTSSpeaker:
     def __init__(self, language_hint: str = "es"):
         """Cola y hilo dedicado para sintetizar voz.
 
@@ -385,7 +384,7 @@ class VoskListener:
 
 # -------------------- Arranque --------------------
 
-class Speaker(Speaker):  # alias para tipado en loop
+class TTSpeaker(TTSSpeaker):  # alias para tipado en loop
     pass
 
 def main():
@@ -408,7 +407,7 @@ def main():
             logger.info(f"{i} {d['name']} IN= {d['max_input_channels']} OUT= {d['max_output_channels']}")
         logger.info("===============================")
 
-    speaker = Speaker(language_hint='es')
+    speaker = TTSSpeaker(language_hint='es')
     plugins = load_plugins(cfg.get('plugins', []))
 
     listener = VoskListener(cfg)
