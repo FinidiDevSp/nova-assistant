@@ -5,6 +5,8 @@ import urllib.parse
 import json
 import logging
 
+from utils import word_in_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,8 +15,8 @@ class Plugin:
     name: str = "clima"
 
     def match(self, text: str, config: Dict[str, Any]) -> bool:
-        t = text.lower()
-        return "clima" in t or "tiempo" in t
+        # Soporta sinónimos configurados (p.ej., "tiempo")
+        return word_in_text(text, "clima", config)
 
     def run(self, text: str, ctx):  # ctx: PluginCtx
         city = ctx.config.get("weather_city") or ctx.config.get("city")

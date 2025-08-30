@@ -4,6 +4,8 @@ import os
 import platform
 import logging
 
+from utils import word_in_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,9 +15,9 @@ class Plugin:
 
     def match(self, text: str, config: Dict[str, Any]) -> bool:
         t = text.lower()
-        if "hibern" in t or "susp" in t:
+        if word_in_text(text, "hiberna", config) or word_in_text(text, "suspende", config):
             return True
-        if "apaga" in t and any(word in t for word in ("ordenador", "equipo", "sistema", "pc", "computadora")):
+        if word_in_text(text, "apaga", config) and any(word in t for word in ("ordenador", "equipo", "sistema", "pc", "computadora")):
             return True
         return False
 
@@ -23,7 +25,7 @@ class Plugin:
         t = text.lower()
         sysname = platform.system()
         try:
-            if "hibern" in t or "susp" in t:
+            if word_in_text(text, "hiberna", ctx.config) or word_in_text(text, "suspende", ctx.config):
                 if sysname == "Windows":
                     os.system("shutdown /h")
                 elif sysname == "Linux":
@@ -32,7 +34,7 @@ class Plugin:
                     ctx.speak("No sé hibernar este sistema")
                     return
                 ctx.speak("Hibernando el ordenador")
-            elif "apaga" in t:
+            elif word_in_text(text, "apaga", ctx.config):
                 if sysname == "Windows":
                     os.system("shutdown /s /t 0")
                 elif sysname == "Linux":

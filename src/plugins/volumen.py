@@ -10,6 +10,8 @@ import re
 import platform
 import logging
 
+from utils import word_in_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ class Plugin:
             return False
         if re.search(r"\d+", t):
             return True
-        return any(k in t for k in ["sube", "baja", "silencia", "activa"])
+        return any(word_in_text(text, k, config) for k in ["sube", "baja", "silencia", "activa"])
 
     def run(self, text: str, ctx):  # ctx: PluginCtx
         if platform.system() != "Windows":
@@ -42,26 +44,26 @@ class Plugin:
             interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             volume = cast(interface, POINTER(IAudioEndpointVolume))
 
-            if "sube" in t:
+            if word_in_text(text, "sube", ctx.config):
                 current = volume.GetMasterVolumeLevelScalar()
                 level = min(1.0, current + 0.05)
                 volume.SetMasterVolumeLevelScalar(level, None)
                 ctx.speak("Volumen aumentado")
                 return
 
-            if "baja" in t:
+            if word_in_text(text, "baja", ctx.config):
                 current = volume.GetMasterVolumeLevelScalar()
                 level = max(0.0, current - 0.05)
                 volume.SetMasterVolumeLevelScalar(level, None)
                 ctx.speak("Volumen disminuido")
                 return
 
-            if "silencia" in t:
+            if word_in_text(text, "silencia", ctx.config):
                 volume.SetMute(1, None)
                 ctx.speak("Volumen silenciado")
                 return
 
-            if "activa" in t:
+            if word_in_text(text, "activa", ctx.config):
                 volume.SetMute(0, None)
                 ctx.speak("Volumen activado")
                 return
