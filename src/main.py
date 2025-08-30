@@ -282,7 +282,7 @@ class VoskListener:
         self.silence_start_ts = None
         return False
 
-    def loop(self, plugins, speaker: Speaker, memory: MemoryStore, config_dir: pathlib.Path):
+    def loop(self, plugins, speaker: TTSSpeaker, memory: MemoryStore, config_dir: pathlib.Path):
         logger.info("Escuchando… (Ctrl+C para salir)")
         ctx = PluginCtx(config=self.cfg, speak=speaker.say, memory=memory, config_dir=config_dir)
         with self._open_stream():
