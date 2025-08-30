@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import subprocess
 import yaml
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Plugin:
@@ -42,6 +45,6 @@ class Plugin:
             try:
                 subprocess.Popen(cmd, shell=True)
             except Exception as e:
-                print(f"[Plugin:modos] Error ejecutando {cmd}: {e}")
+                logger.error(f"[Plugin:modos] Error ejecutando {cmd}: {e}")
         ctx.speak(f"Modo {mode} activado")
 

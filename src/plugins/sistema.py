@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import os
 import platform
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -39,5 +42,5 @@ class Plugin:
                     return
                 ctx.speak("Apagando el ordenador")
         except Exception as e:
-            print(f"[Plugin:sistema] Error: {e}")
+            logger.error(f"[Plugin:sistema] Error: {e}")
             ctx.speak("No pude completar la acción solicitada")

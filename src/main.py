@@ -17,8 +17,15 @@ import pyttsx3
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import keyboard
+import logging
 
 from memory import MemoryStore
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # -------------------- Utilidades --------------------
 
@@ -126,11 +133,11 @@ def load_plugins(plugin_names: List[str]) -> List[Any]:
             module = importlib.import_module(module_name)
             if hasattr(module, 'Plugin'):
                 plugins.append(module.Plugin())
-                print(f"[Plugins] Cargado: {name}")
+                logger.info(f"[Plugins] Cargado: {name}")
             else:
-                print(f"[Plugins] Aviso: {name} no expone clase Plugin")
+                logger.warning(f"[Plugins] Aviso: {name} no expone clase Plugin")
         except Exception as e:
-            print(f"[Plugins] Error cargando {name}: {e}")
+            logger.error(f"[Plugins] Error cargando {name}: {e}")
     return plugins
 
 
@@ -141,7 +148,7 @@ def run_plugins(plugins: List[Any], text: str, ctx: PluginCtx):
             if p.match(text, ctx.config):
                 p.run(text, ctx)
         except Exception as e:
-            print(f"[Plugins] Error en {getattr(p,'name','<plugin>')}: {e}")
+            logger.error(f"[Plugins] Error en {getattr(p,'name','<plugin>')}: {e}")
     ctx.memory.add_history(text)
 
 
@@ -161,14 +168,14 @@ class VoskListener:
         device_rate = int(dev_info['default_samplerate']) or wanted_rate
         self.device_index = device_index
         self.sample_rate = device_rate   # usa la tasa REAL del dispositivo
-        print(f"[Audio] Usando dispositivo: {dev_info['name']} @ {self.sample_rate} Hz (idx={self.device_index})")
+        logger.info(f"[Audio] Usando dispositivo: {dev_info['name']} @ {self.sample_rate} Hz (idx={self.device_index})")
 
         # 2) Cargar modelo correcto
         model_path = self.cfg['model_path']
         if not pathlib.Path(model_path).exists():
-            print(f"Modelo no encontrado en {model_path}")
+            logger.error(f"Modelo no encontrado en {model_path}")
             sys.exit(1)
-        print("Cargando modelo Vosk…")
+        logger.info("Cargando modelo Vosk…")
         self.model = Model(model_path)
 
         # 3) Configurar recognizer con la MISMA tasa que el stream
@@ -198,16 +205,16 @@ class VoskListener:
                 factor=float(cfg.get("calib_factor", 1.6)),
                 min_thresh=int(cfg.get("calib_min_thresh", 120)),
             ))
-        print(f"[VAD] Umbral silencio: {self.energy_thresh:.1f}  Timeout: {self.silence_timeout:.2f}s")
+        logger.info(f"[VAD] Umbral silencio: {self.energy_thresh:.1f}  Timeout: {self.silence_timeout:.2f}s")
 
     def _calibrate_noise_floor(self, seconds: float = 1.5, factor: float = 1.6, min_thresh: int = 120) -> float:
         """Escucha ambiente y calcula umbral de silencio recomendado."""
         import time
         samples: List[bytes] = []
-        print(f"[Cal] Calibrando ruido de fondo {seconds:.1f}s… mantén silencio.")
+        logger.info(f"[Cal] Calibrando ruido de fondo {seconds:.1f}s… mantén silencio.")
         def cb(indata, frames, time_info, status):
             if status:
-                print("[SD-Cal]", status)
+                logger.debug("[SD-Cal] %s", status)
             samples.append(bytes(indata))
 
         block = int(self.sample_rate * 0.05)  # ~50ms
@@ -220,12 +227,12 @@ class VoskListener:
         vals = [rms_energy_int16(b) for b in samples if b]
         base = sum(vals)/len(vals) if vals else 0.0
         th = max(min_thresh, base * factor)
-        print(f"[Cal] Base={base:.1f}  =>  energy_thresh={th:.1f}")
+        logger.info(f"[Cal] Base={base:.1f}  =>  energy_thresh={th:.1f}")
         return th
 
     def _cb(self, indata, frames, time_info, status):
         if status:
-            print("[SD]", status)
+            logger.debug("[SD] %s", status)
         self.q.put(bytes(indata))
 
     def _open_stream(self):
@@ -244,12 +251,12 @@ class VoskListener:
         self.active = False
         self.utterance_buffer.clear()
         self.recognizer.Reset()
-        print("[Micro] Desactivado")
+        logger.info("[Micro] Desactivado")
 
     def enable_micro(self):
         self.micro_enabled = True
         self.recognizer.Reset()
-        print("[Micro] Activado")
+        logger.info("[Micro] Activado")
 
     def _handle_final_result(self, res_json: str) -> str:
         return (json.loads(res_json).get('text') or '').strip()
@@ -261,7 +268,7 @@ class VoskListener:
         """
         # Debug opcional de energía (exporta NOVA_DEBUG_ENERGY=1)
         if os.environ.get("NOVA_DEBUG_ENERGY") == "1":
-            print(f"[ENERGY] {energy:.1f}  (th={self.energy_thresh:.1f}, active={self.active}, mode={self.mode})")
+            logger.debug(f"[ENERGY] {energy:.1f}  (th={self.energy_thresh:.1f}, active={self.active}, mode={self.mode})")
 
         if energy < self.energy_thresh:
             if self.silence_start_ts is None:
@@ -277,7 +284,7 @@ class VoskListener:
         return False
 
     def loop(self, plugins, speaker: Speaker, memory: MemoryStore, config_dir: pathlib.Path):
-        print("Escuchando… (Ctrl+C para salir)")
+        logger.info("Escuchando… (Ctrl+C para salir)")
         ctx = PluginCtx(config=self.cfg, speak=speaker.say, memory=memory, config_dir=config_dir)
         with self._open_stream():
             while True:
@@ -298,14 +305,14 @@ class VoskListener:
                     if not self.active and partial and self.activation in partial:
                         self.active = True
                         self.utterance_buffer.clear()
-                        print(f"[Hotword] Activación detectada (parcial): '{self.activation}'")
+                        logger.info(f"[Hotword] Activación detectada (parcial): '{self.activation}'")
                         if self.mode == 'keyword_until_stop':
-                            print("[Modo] Transcripción continua hasta 'stop_word'")
+                            logger.info("[Modo] Transcripción continua hasta 'stop_word'")
                         continue
 
                     if self.active and self.mode == 'keyword_until_stop' and partial:
                         if self.stop_word in partial:
-                            print(f"[Hotword] Parada detectada (parcial): '{self.stop_word}'")
+                            logger.info(f"[Hotword] Parada detectada (parcial): '{self.stop_word}'")
                             self.active = False
                             self.utterance_buffer.clear()
                             continue
@@ -315,10 +322,10 @@ class VoskListener:
                         if self._maybe_end_utterance(energy, now_ts):
                             if self.utterance_buffer:
                                 utterance = " ".join(self.utterance_buffer)
-                                print(f"[ASR-ONCE] {utterance}")
+                                logger.info(f"[ASR-ONCE] {utterance}")
                                 run_plugins(plugins, utterance, ctx)
                             else:
-                                print("[ASR-ONCE] (silencio, nada que transcribir)")
+                                logger.info("[ASR-ONCE] (silencio, nada que transcribir)")
                             self.utterance_buffer.clear()
                             self.active = False
                     continue
@@ -326,7 +333,7 @@ class VoskListener:
                 # Final
                 text = self._handle_final_result(self.recognizer.Result()).lower()
                 if text:
-                    print(f"[Final] {text}")
+                    logger.info(f"[Final] {text}")
                     if self.mic_off_word in text:
                         ctx.memory.add_history(text)
                         self.disable_micro()
@@ -338,10 +345,10 @@ class VoskListener:
                         if self._maybe_end_utterance(energy, now_ts):
                             if self.utterance_buffer:
                                 utterance = " ".join(self.utterance_buffer)
-                                print(f"[ASR-ONCE] {utterance}")
+                                logger.info(f"[ASR-ONCE] {utterance}")
                                 run_plugins(plugins, utterance, ctx)
                             else:
-                                print("[ASR-ONCE] (silencio, nada que transcribir)")
+                                logger.info("[ASR-ONCE] (silencio, nada que transcribir)")
                             self.utterance_buffer.clear()
                             self.active = False
                     continue
@@ -351,14 +358,14 @@ class VoskListener:
                     if self.activation in text:
                         self.active = True
                         self.utterance_buffer.clear()
-                        print(f"[Hotword] Activación detectada: '{self.activation}'")
+                        logger.info(f"[Hotword] Activación detectada: '{self.activation}'")
                         if self.mode == 'keyword_until_stop':
-                            print("[Modo] Transcripción continua hasta 'stop_word'")
+                            logger.info("[Modo] Transcripción continua hasta 'stop_word'")
                     continue
 
                 if self.mode == 'keyword_until_stop':
                     if self.stop_word in text:
-                        print(f"[Hotword] Parada detectada: '{self.stop_word}'")
+                        logger.info(f"[Hotword] Parada detectada: '{self.stop_word}'")
                         self.active = False
                         self.utterance_buffer.clear()
                         continue
@@ -370,7 +377,7 @@ class VoskListener:
                     self.silence_start_ts = None  # hubo voz -> cancelar conteo de silencio
                     if self._maybe_end_utterance(energy, now_ts):
                         utterance = " ".join(self.utterance_buffer)
-                        print(f"[ASR-ONCE] {utterance}")
+                        logger.info(f"[ASR-ONCE] {utterance}")
                         run_plugins(plugins, utterance, ctx)
                         self.utterance_buffer.clear()
                         self.active = False
@@ -385,21 +392,21 @@ def main():
     cfg_dir = pathlib.Path(__file__).resolve().parent.parent / 'config'
     cfg_path = cfg_dir / 'config.yaml'
     if not cfg_path.exists():
-        print(f"No existe config.yaml en {cfg_path}")
+        logger.error(f"No existe config.yaml en {cfg_path}")
         sys.exit(1)
     with cfg_path.open('r', encoding='utf-8') as f:
         cfg = yaml.safe_load(f) or {}
     memory = MemoryStore(cfg_dir / 'memory.yaml')
     history = memory.get_history()
     if history:
-        print(f"[Mem] Última frase: {history[-1]}")
+        logger.info(f"[Mem] Última frase: {history[-1]}")
 
     # (Opcional) Lista dispositivos
     if cfg.get("list_devices", False):
-        print("==== Dispositivos de audio ====")
+        logger.info("==== Dispositivos de audio ====")
         for i, d in enumerate(sd.query_devices()):
-            print(i, d['name'], "IN=", d['max_input_channels'], "OUT=", d['max_output_channels'])
-        print("===============================")
+            logger.info(f"{i} {d['name']} IN= {d['max_input_channels']} OUT= {d['max_output_channels']}")
+        logger.info("===============================")
 
     speaker = Speaker(language_hint='es')
     plugins = load_plugins(cfg.get('plugins', []))
@@ -415,7 +422,7 @@ def main():
     try:
         listener.loop(plugins, speaker, memory, cfg_dir)
     except KeyboardInterrupt:
-        print("\nSaliendo…")
+        logger.info("\nSaliendo…")
 
 
 if __name__ == '__main__':

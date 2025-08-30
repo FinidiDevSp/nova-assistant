@@ -8,6 +8,9 @@ from dataclasses import dataclass
 from typing import Dict, Any
 import re
 import platform
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -72,5 +75,5 @@ class Plugin:
             volume.SetMasterVolumeLevelScalar(level / 100.0, None)
             ctx.speak(f"Volumen ajustado al {level} por ciento")
         except Exception as e:
-            print(f"[Plugin:volumen] Error: {e}")
+            logger.error(f"[Plugin:volumen] Error: {e}")
             ctx.speak("No pude ajustar el volumen")

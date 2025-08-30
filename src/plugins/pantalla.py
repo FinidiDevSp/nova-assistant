@@ -3,11 +3,14 @@ from typing import Dict, Any
 import re
 import platform
 import subprocess
+import logging
 
 try:
     import screen_brightness_control as sbc
 except Exception:  # library not available
     sbc = None
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -39,7 +42,7 @@ class Plugin:
                     return
                 ctx.speak("Pantalla apagada")
             except Exception as e:
-                print(f"[Plugin:pantalla] Error apagando pantalla: {e}")
+                logger.error(f"[Plugin:pantalla] Error apagando pantalla: {e}")
                 ctx.speak("No pude apagar la pantalla")
             return
 
@@ -56,7 +59,7 @@ class Plugin:
                     return
                 ctx.speak("Pantalla encendida")
             except Exception as e:
-                print(f"[Plugin:pantalla] Error encendiendo pantalla: {e}")
+                logger.error(f"[Plugin:pantalla] Error encendiendo pantalla: {e}")
                 ctx.speak("No pude encender la pantalla")
             return
 
@@ -74,5 +77,5 @@ class Plugin:
                 sbc.set_brightness(level)
                 ctx.speak(f"Brillo ajustado al {level} por ciento")
             except Exception as e:
-                print(f"[Plugin:pantalla] Error: {e}")
+                logger.error(f"[Plugin:pantalla] Error: {e}")
                 ctx.speak("No pude ajustar el brillo")
