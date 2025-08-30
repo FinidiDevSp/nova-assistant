@@ -1,0 +1,9 @@
+silencio:
+  speak: "Activando modo silencio"
+  commands:
+    - "pactl set-sink-mute @DEFAULT_SINK@ 1"
+trabajo:
+  speak: "Activando modo trabajo"
+  commands:
+    - "firefox"
+    - "code"

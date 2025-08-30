@@ -4,3 +4,5 @@ pyttsx3
 PyYAML
 pycaw
 screen_brightness_control
+keyboard
+
