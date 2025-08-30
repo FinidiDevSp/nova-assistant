@@ -6,12 +6,24 @@ activation_word: "activar"
 stop_word: "parar"
 
 # Silencio razonable (solo aplica a mode=keyword_once)
-silence_timeout_sec: 1.2 # tiempo continuo por debajo del umbral para cortar
+silence_timeout_sec: 0.8 # tiempo continuo por debajo del umbral para cortar
 silence_energy_threshold: 650 # umbral de energía RMS (int16). Ajustar según mic/entorno
 
 # Audio / Vosk
 sample_rate: 16000
 model_path: "src/models/es" # carpeta del modelo Vosk descargado
+
+# Calibración automática del umbral de silencio
+auto_calibrate_silence: true
+calib_seconds: 1.5
+calib_factor: 1.6
+calib_min_thresh: 120
+
+# (Opcional) listar dispositivos al arrancar
+list_devices: false
+
+# (Opcional) seleccionar dispositivo de entrada concreto
+# audio_device_index: 3
 
 # Persona
 person_name: "Gorka"
