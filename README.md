@@ -4,7 +4,7 @@ Este starter project implementa dos modos:
 1. **keyword_once**: dice la palabra de activación y, tras un **silencio razonable**, transcribe lo dicho y ejecuta plugins.
 2. **keyword_until_stop**: transcribe de forma continua hasta detectar la palabra **stop**.
 
-Incluye **TTS** con `pyttsx3` y plugins de **saludo**, **volumen**, **control del sistema** (apagar o hibernar el ordenador), **pantalla** (apagarla o ajustar el brillo) y un plugin de **modos** configurable.
+Incluye **TTS** con `pyttsx3` y plugins de **saludo**, **volumen**, **control del sistema** (apagar o hibernar el ordenador), **pantalla** (apagarla o ajustar el brillo), **navegador** (abre un navegador web) y un plugin de **modos** configurable.
 
 ## Requisitos
 ```bash

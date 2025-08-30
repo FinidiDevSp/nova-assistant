@@ -40,7 +40,12 @@ plugins:
     - "pantalla"
     - "modos"
     - "clima"
+    - "navegador"
 
 hotkeys:
   mic_off: "ctrl+shift+m"
   mic_on: "ctrl+shift+n"
+
+# Opciones para el plugin de navegador
+browser: ""        # p.ej., "chrome" o "firefox"; vacío usa el predeterminado
+browser_url: "https://www.google.com"
