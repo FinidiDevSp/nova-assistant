@@ -141,13 +141,36 @@ def load_plugins(plugin_names: List[str]) -> List[Any]:
 
 
 def run_plugins(plugins: List[Any], text: str, ctx: PluginCtx):
-    """Ejecuta plugins cuyo matcher devuelva True para el texto dado."""
+    """Ejecuta plugins cuyo matcher devuelva True para el texto dado.
+
+    Cada plugin se despacha en un ``thread`` independiente para que puedan
+    ejecutarse en paralelo. Se captura cualquier excepción de cada plugin y
+    se reporta si excede el ``timeout``.
+    """
+    threads = []
+
+    def _run(p, name):
+        try:
+            p.run(text, ctx)
+        except Exception as e:
+            logger.error(f"[Plugins] Error en {name}: {e}")
+
     for p in plugins:
+        name = getattr(p, 'name', '<plugin>')
         try:
             if p.match(text, ctx.config):
-                p.run(text, ctx)
+                t = threading.Thread(target=_run, args=(p, name), daemon=True)
+                t.start()
+                threads.append((t, name))
         except Exception as e:
-            logger.error(f"[Plugins] Error en {getattr(p,'name','<plugin>')}: {e}")
+            logger.error(f"[Plugins] Error en matcher {name}: {e}")
+
+    timeout = ctx.config.get('plugin_timeout_sec', 5.0)
+    for t, name in threads:
+        t.join(timeout)
+        if t.is_alive():
+            logger.error(f"[Plugins] Timeout en {name}")
+
     ctx.memory.add_history(text)
 
 
