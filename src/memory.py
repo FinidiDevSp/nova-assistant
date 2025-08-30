@@ -14,6 +14,8 @@ class MemoryStore:
         else:
             self.data = {}
         self.data.setdefault('history', [])
+        self.data.setdefault('notes', [])
+        self.data.setdefault('alarms', [])
 
     def add_history(self, text: str) -> None:
         with self.lock:
